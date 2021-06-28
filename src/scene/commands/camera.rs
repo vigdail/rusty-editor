@@ -48,13 +48,19 @@ impl<'a> Command<'a> for SetCameraPreviewCommand {
         self.old_value = camera.is_enabled();
         camera.set_enabled(self.value);
 
+        let editor_camera_handle = context.editor_scene.camera_controller.camera;
+
         self.last_active = context
             .scene
             .graph
             .pair_iter_mut()
             .filter_map(|(handle, node)| {
+                if self.node == handle || editor_camera_handle == handle {
+                    return None;
+                }
+
                 if let Node::Camera(cam) = node {
-                    if self.node != handle && cam.is_enabled() {
+                    if cam.is_enabled() {
                         cam.set_enabled(false);
                         Some(handle)
                     } else {
@@ -66,8 +72,7 @@ impl<'a> Command<'a> for SetCameraPreviewCommand {
             })
             .collect::<Vec<_>>();
 
-        let editor_camera_node = context.editor_scene.camera_controller.camera;
-        let editor_camera = context.scene.graph[editor_camera_node].as_camera_mut();
+        let editor_camera = context.scene.graph[editor_camera_handle].as_camera_mut();
         editor_camera.set_enabled(!self.value);
     }
 
@@ -81,6 +86,10 @@ impl<'a> Command<'a> for SetCameraPreviewCommand {
 
         let editor_camera_node = context.editor_scene.camera_controller.camera;
         let editor_camera = context.scene.graph[editor_camera_node].as_camera_mut();
-        editor_camera.set_enabled(!self.old_value);
+        if self.last_active.len() == 0 {
+            editor_camera.set_enabled(!self.old_value);
+        } else {
+            editor_camera.set_enabled(false);
+        }
     }
 }
